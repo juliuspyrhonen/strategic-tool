@@ -300,7 +300,7 @@ Vertailukriteerit:
     if st.session_state.v3_output:
         st.markdown("---")
         st.subheader("Vertailutaulukko")
-        st.markdown(st.session_state.v3_output)
+        st.markdown(st.session_state.v3_output, unsafe_allow_html=True)
         st.markdown("---")
 
         decision = st.text_area(
