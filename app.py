@@ -3,7 +3,7 @@ import anthropic
 from datetime import datetime
 
 # --- Config ---
-API_KEY = "tahan-oma-api-avaimesi"
+API_KEY = st.secrets["ANTHROPIC_API_KEY"]
 
 SYSTEM_PROMPT_V1 = """Olet strategisen paatoksenteon tuki. Tehtavasi on AINOASTAAN laajentaa paatoskysymysta, ei kaventaa sita eika suositella ratkaisuja.
 
