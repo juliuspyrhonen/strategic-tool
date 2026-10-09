@@ -593,7 +593,9 @@ if "lang_choice" not in st.session_state:
     initial = st.query_params.get("lang", "fi")
     st.session_state.lang_choice = initial if initial in LANGS else "fi"
 lang = st.session_state.lang_choice
-if "mode_choice" not in st.session_state:
+if st.session_state.get("mode_choice") not in MODES:
+    if "mode_choice" in st.session_state:
+        logger.warning("Invalid mode in session state: %r", st.session_state.mode_choice)
     initial_mode = st.query_params.get("mode", "strategy")
     st.session_state.mode_choice = initial_mode if initial_mode in MODES else "strategy"
 mode = st.session_state.mode_choice
