@@ -2,6 +2,7 @@
 
 A four-step Streamlit tool in which the AI widens and structures a strategic
 decision but never recommends or ranks an option. The human does the choosing.
+A second mode applies the same steps to ISO corrective action handling (capa.py).
 """
 
 import html
@@ -11,6 +12,8 @@ from datetime import datetime
 
 import anthropic
 import streamlit as st
+
+import capa
 
 logger = logging.getLogger("strategic_tool")
 
@@ -31,10 +34,14 @@ CONTACT_EMAIL = _secret("CONTACT_EMAIL", "")
 REPO_URL = "https://github.com/juliuspyrhonen/strategic-tool"
 
 LANGS = {"fi": "Suomi", "en": "English"}
+MODES = {
+    "strategy": {"fi": "Strateginen päätös", "en": "Strategic decision"},
+    "capa": {"fi": "Korjaava toimenpide (ISO 10.2)", "en": "Corrective action (ISO 10.2)"},
+}
 
 # --- System prompts ----------------------------------------------------------
 
-PROMPTS = {
+STRATEGY_PROMPTS = {
     "fi": {
         "v1": """Olet strategisen päätöksenteon tuki. Tehtäväsi on AINOASTAAN laajentaa päätöskysymystä, ei kaventaa sitä eikä suositella ratkaisuja.
 
@@ -139,6 +146,9 @@ Respond in English. Use Markdown formatting, no HTML tags.""",
     },
 }
 
+PROMPTS = {"strategy": STRATEGY_PROMPTS, "capa": capa.PROMPTS}
+MODE_TEXTS = {"capa": capa.TEXTS}  # overrides on top of the base TEXTS below
+
 # --- UI texts ----------------------------------------------------------------
 
 TEXTS = {
@@ -162,6 +172,7 @@ TEXTS = {
             "istunto katoaa, kun suljet sivun."
         ),
         "lang_label": "Kieli / Language",
+        "mode_label": "Työkalun tila",
         "progress": "Eteneminen",
         "steps": ["Taustakartoitus", "Vaihtoehdot", "Vertailu", "Kyseenalaistus"],
         "reset": "Aloita alusta",
@@ -262,6 +273,7 @@ TEXTS = {
             "when you close the page."
         ),
         "lang_label": "Kieli / Language",
+        "mode_label": "Mode",
         "progress": "Progress",
         "steps": ["Background mapping", "Alternatives", "Comparison", "Challenge"],
         "reset": "Start over",
@@ -376,6 +388,11 @@ def clear(keys):
 
 def on_lang_change():
     st.query_params["lang"] = st.session_state.lang_choice
+    reset_session()
+
+
+def on_mode_change():
+    st.query_params["mode"] = st.session_state.mode_choice
     reset_session()
 
 
@@ -576,8 +593,14 @@ if "lang_choice" not in st.session_state:
     initial = st.query_params.get("lang", "fi")
     st.session_state.lang_choice = initial if initial in LANGS else "fi"
 lang = st.session_state.lang_choice
-t = TEXTS[lang]
-P = PROMPTS[lang]
+if st.session_state.get("mode_choice") not in MODES:
+    if "mode_choice" in st.session_state:
+        logger.warning("Invalid mode in session state: %r", st.session_state.mode_choice)
+    initial_mode = st.query_params.get("mode", "strategy")
+    st.session_state.mode_choice = initial_mode if initial_mode in MODES else "strategy"
+mode = st.session_state.mode_choice
+t = {**TEXTS[lang], **MODE_TEXTS.get(mode, {}).get(lang, {})}
+P = PROMPTS[mode][lang]
 
 st.set_page_config(page_title=t["title"], page_icon="🧭", layout="centered")
 
@@ -589,6 +612,8 @@ s = st.session_state
 with st.sidebar:
     st.radio(t["lang_label"], options=list(LANGS), format_func=LANGS.get,
              key="lang_choice", on_change=on_lang_change, horizontal=True)
+    st.radio(t["mode_label"], options=list(MODES), format_func=lambda m: MODES[m][lang],
+             key="mode_choice", on_change=on_mode_change)
     st.divider()
     st.subheader(t["progress"])
     step = current_step()
